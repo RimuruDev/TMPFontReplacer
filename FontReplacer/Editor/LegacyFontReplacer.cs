@@ -57,10 +57,26 @@ namespace RimuruDev.FontReplacer.Editor
             {
                 var prefabs = Directory.GetFiles(pathToPrefabFolder, "*.prefab", SearchOption.AllDirectories);
 
+                // Legacy UnityEngine.UI.Text
                 foreach (var prefabPath in prefabs)
                 {
                     var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
                     var textComponents = prefab.GetComponentsInChildren<Text>(true);
+
+                    foreach (var text in textComponents.Where(x => x != null))
+                    {
+                        text.font = newFont;
+                        EditorUtility.SetDirty(text);
+                    }
+
+                    PrefabUtility.SavePrefabAsset(prefab);
+                }
+
+                // Legacy UnityEngine.TextMesh
+                foreach (var prefabPath in prefabs)
+                {
+                    var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+                    var textComponents = prefab.GetComponentsInChildren<TextMesh>(true);
 
                     foreach (var text in textComponents.Where(x => x != null))
                     {
