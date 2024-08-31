@@ -1,0 +1,30 @@
+{
+  "name": "unity-tmp-font-replacer",
+  "version": "1.2.1",
+  "description": "A Unity Editor tool for automating the process of replacing fonts in TextMeshPro components across multiple prefabs.",
+  "author": "RimuruDev",
+  "license": "MIT",
+  "main": "Editor/TMPFontReplacer.cs",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RimuruDev/TMPFontReplacer.git"
+  },
+  "keywords": [
+    "unity",
+    "editor",
+    "font",
+    "replacement",
+    "textmeshpro",
+    "rimuru-dev",
+    "rimurudev",
+    "TMP",
+    "prefabs"
+  ],
+  "bugs": {
+    "email": "rimuru.dev@gmail.com",
+    "url": "https://github.com/RimuruDev/TMPFontReplacer/issues"
+  },
+  "homepage": "https://github.com/RimuruDev/TMPFontReplacer",
+  "dependencies": {}
+}
