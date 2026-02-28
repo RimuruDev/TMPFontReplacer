@@ -1,0 +1,23 @@
+{
+  "name": "AbyssMoth.TMPFontReplacer.Editor.Tests",
+  "rootNamespace": "AbyssMoth.Tests",
+  "references": [
+    "AbyssMoth.TMPFontReplacer.Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

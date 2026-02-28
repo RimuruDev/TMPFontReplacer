@@ -1,0 +1,22 @@
+{
+  "name": "com.abyssmoth.tmp-font-replacer",
+  "version": "1.0.0",
+  "displayName": "TMP Font Replacer",
+  "description": "Editor tool for analyzing and replacing TMP fonts in prefabs, with an optional legacy tab for UGUI Text and TextMesh.",
+  "unity": "6000.3",
+  "unityRelease": "6f1",
+  "license": "MIT",
+  "keywords": [
+    "rimurudev",
+    "rimuru-dev",
+    "abyssmoth",
+    "tmp",
+    "font",
+    "textmeshpro"
+  ],
+  "author": {
+    "name": "RimuruDev",
+    "url": "https://github.com/RimuruDev"
+  },
+  "type": "tool"
+}
