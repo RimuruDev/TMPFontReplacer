@@ -19,19 +19,22 @@ namespace AbyssMoth.Tests
         [SetUp]
         public void SetUp()
         {
+            TMPFontReplacerIntegration.ClearTestOverride();
             CleanupTestAssets();
             EnsureFolder(TestRootFolder);
         }
 
         [TearDown]
-        public void TearDown() =>
+        public void TearDown()
+        {
+            TMPFontReplacerIntegration.ClearTestOverride();
             CleanupTestAssets();
+        }
 
         [Test]
         public void AnalyzeTmp_WithoutOptionalSupport_ReturnsSafeErrorReport()
         {
-            if (TMPFontReplacerIntegration.Instance.IsAvailable)
-                Assert.Ignore("TextMeshPro is available in this project.");
+            TMPFontReplacerIntegration.SetTestOverride(new UnavailableTmpIntegrationStub());
 
             var report = TMPFontReplacerService.AnalyzeTmp(TestRootFolder, null, null);
 
@@ -59,7 +62,7 @@ namespace AbyssMoth.Tests
         [Test]
         public void AnalyzeLegacy_CountsTextMeshMatches()
         {
-            var sourceFont = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            var sourceFont = GetBuiltinLegacyFont();
             CreateLegacyPrefab("LegacyAnalyze.prefab", sourceFont);
 
             var report = TMPFontReplacerService.AnalyzeLegacy(TestRootFolder, sourceFont, null);
@@ -72,7 +75,7 @@ namespace AbyssMoth.Tests
         [Test]
         public void ReplaceLegacy_ChangesTextMeshFont()
         {
-            var sourceFont = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            var sourceFont = GetBuiltinLegacyFont();
             var replacementFont = CreateFontAsset("ReplacementLegacy.fontsettings");
             var prefabPath = CreateLegacyPrefab("LegacyReplace.prefab", sourceFont);
 
@@ -103,6 +106,9 @@ namespace AbyssMoth.Tests
 
         private static UnityEngine.Object CreateTmpFontAsset(string fileName)
         {
+            if (TryCopyExistingTmpFontAsset(fileName, out var copiedFontAsset))
+                return copiedFontAsset;
+
             var tmpFontAssetType = GetRequiredType("TMPro.TMP_FontAsset", "Unity.TextMeshPro");
             var createMethod = tmpFontAssetType.GetMethod(
                 "CreateFontAsset",
@@ -113,14 +119,65 @@ namespace AbyssMoth.Tests
 
             Assert.That(createMethod, Is.Not.Null, "TMP_FontAsset.CreateFontAsset(Font) was not found.");
 
-            var builtinFont = Resources.GetBuiltinResource<Font>("Arial.ttf");
-            var tmpFontAsset = createMethod.Invoke(null, new object[] { builtinFont }) as UnityEngine.Object;
+            var sourceFont = FindImportableFontAsset();
+            Assert.That(sourceFont, Is.Not.Null, "No importable .ttf/.otf font asset was found to create a TMP font asset for tests.");
 
+            var tmpFontAsset = createMethod.Invoke(null, new object[] { sourceFont }) as UnityEngine.Object;
             Assert.That(tmpFontAsset, Is.Not.Null, "Failed to create a TMP font asset.");
 
+            tmpFontAsset.name = System.IO.Path.GetFileNameWithoutExtension(fileName);
             AssetDatabase.CreateAsset(tmpFontAsset, $"{TestRootFolder}/{fileName}");
             AssetDatabase.SaveAssets();
             return tmpFontAsset;
+        }
+
+        private static bool TryCopyExistingTmpFontAsset(string fileName, out UnityEngine.Object copiedFontAsset)
+        {
+            copiedFontAsset = null;
+
+            var guids = AssetDatabase.FindAssets("t:TMP_FontAsset");
+            for (var i = 0; i < guids.Length; i++)
+            {
+                var sourcePath = AssetDatabase.GUIDToAssetPath(guids[i]);
+                if (string.IsNullOrWhiteSpace(sourcePath) ||
+                    sourcePath.StartsWith(TestRootFolder, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var targetPath = $"{TestRootFolder}/{fileName}";
+                if (!AssetDatabase.CopyAsset(sourcePath, targetPath))
+                    continue;
+
+                AssetDatabase.SaveAssets();
+                copiedFontAsset = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(targetPath);
+                return copiedFontAsset != null;
+            }
+
+            return false;
+        }
+
+        private static Font FindImportableFontAsset()
+        {
+            var guids = AssetDatabase.FindAssets("t:Font");
+            for (var i = 0; i < guids.Length; i++)
+            {
+                var assetPath = AssetDatabase.GUIDToAssetPath(guids[i]);
+                if (string.IsNullOrWhiteSpace(assetPath))
+                    continue;
+
+                if (!assetPath.EndsWith(".ttf", StringComparison.OrdinalIgnoreCase) &&
+                    !assetPath.EndsWith(".otf", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var font = AssetDatabase.LoadAssetAtPath<Font>(assetPath);
+                if (font != null)
+                    return font;
+            }
+
+            return null;
         }
 
         private static string CreateLegacyPrefab(string prefabName, Font sourceFont)
@@ -194,6 +251,35 @@ namespace AbyssMoth.Tests
             return null;
         }
 
+        private static Font GetBuiltinLegacyFont()
+        {
+            var font = TryGetBuiltinFont("LegacyRuntime.ttf");
+            if (font != null)
+                return font;
+
+            font = TryGetBuiltinFont("Arial.ttf");
+            if (font != null)
+                return font;
+
+            Assert.Fail("No supported built-in legacy font was found for this Unity version.");
+            return null;
+        }
+
+        private static Font TryGetBuiltinFont(string assetName)
+        {
+            if (string.IsNullOrWhiteSpace(assetName))
+                return null;
+
+            try
+            {
+                return Resources.GetBuiltinResource<Font>(assetName);
+            }
+            catch (ArgumentException)
+            {
+                return null;
+            }
+        }
+
         private static void EnsureFolder(string folderPath)
         {
             if (AssetDatabase.IsValidFolder(folderPath))
@@ -217,6 +303,48 @@ namespace AbyssMoth.Tests
                 AssetDatabase.DeleteAsset(TestRootFolder);
 
             AssetDatabase.Refresh();
+        }
+
+        private sealed class UnavailableTmpIntegrationStub : ITMPFontReplacerIntegration
+        {
+            public bool IsAvailable => false;
+            public bool HasUguiSupport => false;
+            public string UnavailableMessage => "TextMeshPro is not available in this project.";
+
+            public UnityEngine.Object DrawTmpFontField(string label, UnityEngine.Object currentValue) =>
+                currentValue;
+
+            public FontReplacerReport AnalyzeTmp(string folderPath, UnityEngine.Object sourceFont, UnityEngine.Object replacementFont) =>
+                CreateUnavailableReport(folderPath, sourceFont, replacementFont, FontReplacerOperation.Analyze);
+
+            public FontReplacerReport ReplaceTmp(string folderPath, UnityEngine.Object sourceFont, UnityEngine.Object replacementFont) =>
+                CreateUnavailableReport(folderPath, sourceFont, replacementFont, FontReplacerOperation.Replace);
+
+            public bool ProcessLegacyAdditionalComponents(
+                GameObject prefabRoot,
+                string prefabPath,
+                Font sourceFont,
+                Font replacementFont,
+                FontReplacerOperation operation,
+                FontReplacerReport report) =>
+                false;
+
+            private FontReplacerReport CreateUnavailableReport(
+                string folderPath,
+                UnityEngine.Object sourceFont,
+                UnityEngine.Object replacementFont,
+                FontReplacerOperation operation)
+            {
+                var report = new FontReplacerReport(
+                    FontReplacerSection.TMP,
+                    operation,
+                    TMPFontReplacerService.NormalizeFolderPath(folderPath),
+                    TMPFontReplacerService.GetSourceFilterLabel(sourceFont),
+                    TMPFontReplacerService.GetAssetLabel(replacementFont));
+
+                report.SetError(UnavailableMessage);
+                return report;
+            }
         }
     }
 }

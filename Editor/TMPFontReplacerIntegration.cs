@@ -32,7 +32,16 @@ namespace AbyssMoth
 
     internal static class TMPFontReplacerIntegration
     {
-        public static ITMPFontReplacerIntegration Instance { get; } = new TMPFontReplacerRuntimeIntegration();
+        private static readonly ITMPFontReplacerIntegration DefaultInstance = new TMPFontReplacerRuntimeIntegration();
+        private static ITMPFontReplacerIntegration testOverride;
+
+        public static ITMPFontReplacerIntegration Instance => testOverride ?? DefaultInstance;
+
+        internal static void SetTestOverride(ITMPFontReplacerIntegration integration) =>
+            testOverride = integration;
+
+        internal static void ClearTestOverride() =>
+            testOverride = null;
     }
 
     internal sealed class TMPFontReplacerRuntimeIntegration : ITMPFontReplacerIntegration
